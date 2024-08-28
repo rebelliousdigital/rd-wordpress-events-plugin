@@ -10,15 +10,36 @@ Author URI: https://rebelliousdigital.co.uk
 */
 
 // Create class to initialize the plugin
+
 class RebelliousDigitalEvents {
     public function __construct() {
         $this->includes();
         add_shortcode( 'rd-events', array( $this, 'rebellious_digital_events_shortcode' ) );
         add_shortcode( 'rd-past-events', array( $this, 'rebellious_digital_past_events_shortcode' ) );
+        add_shortcode( 'rd-events-carousel', array( $this, 'rebellious_digital_events_carousel_shortcode' ) );
+
         add_action( 'pre_get_posts', array( $this, 'rebellious_digital_events_remove_past_events' ) );
-        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_styles' ) );
+        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_styles_scripts' ) );
+
+        add_filter( 'script_loader_tag', array( $this, 'add_module_type_attribute' ), 10, 3 );
+
         register_activation_hook( __FILE__, array( $this, 'rebellious_digital_events_plugin_activate' ) );
         register_deactivation_hook( __FILE__, array( $this, 'rebellious_digital_events_plugin_deactivate' ) );
+    }
+
+    /**
+     * Add script handle
+     * @param string $tag
+     * @param string $handle
+     * @param string $src
+     * @return string
+     */
+
+    public function add_module_type_attribute($tag, $handle, $src) {
+        if ('rebellious-digital-events-script' === $handle) {
+            $tag = '<script type="module" src="' . esc_url($src) . '"></script>';
+        }
+        return $tag;
     }
 
     /**
@@ -27,8 +48,10 @@ class RebelliousDigitalEvents {
      * @return void
      */
 
-    public function enqueue_frontend_styles() {
-        wp_enqueue_style('rebellious-digital-events-style', plugin_dir_url(__FILE__) . 'assets/css/style.min.css');
+    public function enqueue_frontend_styles_scripts() {
+        wp_enqueue_style('rebellious-digital-events-style', plugin_dir_url(__FILE__) . 'assets/build/css/style.min.css');
+        wp_enqueue_script('rebellious-digital-events-script', plugin_dir_url(__FILE__) . 'assets/build/js/main.min.js', array('jquery'), '', true);
+        wp_enqueue_script('embla-carousel', 'https://unpkg.com/embla-carousel/embla-carousel.umd.js', array(), '', true);
     }
 
     /**
@@ -49,6 +72,16 @@ class RebelliousDigitalEvents {
 
     public function rebellious_digital_past_events_shortcode() {
         include( plugin_dir_path( __FILE__ ) . 'templates/rd-past-events-list.php' );
+    }
+
+    /**
+     * Events carousel shortcode
+     * 
+     * @return void
+     */
+
+    public function rebellious_digital_events_carousel_shortcode() {
+        include( plugin_dir_path( __FILE__ ) . 'templates/rd-events-carousel.php' );
     }
 
     /**
@@ -255,6 +288,29 @@ class RebelliousDigitalEvents {
                 $content .= '<h3 class="rd-latest-events__content-title"><a href="' . esc_url($permalink) . '">' . esc_html($title) . '</a></h3>';
                 $content .= '<time class="rd-latest-events__content-time">' . RebelliousDigitalEvents::format_event_date_time($post_id) . '</time>';
                 $content .= '<p class="rd-latest-events__content-excerpt">' . esc_html($excerpt) . '</p>';
+            $content .= '</div>';
+        $content .= '</article>';
+
+        echo $content;
+    }
+
+    /**
+     * Event carousel slide
+     * 
+     * @param WP_Post $post
+     * @return void
+     */
+
+    public static function event_carousel_slide($post_id) {
+        $start_date = RebelliousDigitalEvents::get_event_start_date($post_id);
+        $title = get_the_title($post_id);
+        $permalink = get_permalink($post_id);
+
+        $content = '<article class="embla__slide">';
+            $content .= '<div class="rd-latest-events__content">';
+                $content .= '<h3 class="rd-latest-events__content-title"><a href="' . esc_url($permalink) . '">' . esc_html($title) . '</a></h3>';
+                $content .= '<span class="dot">&middot;</span>';
+                $content .= '<time class="rd-latest-events__content-time">' . date('j M, Y', strtotime($start_date)) . '</time>';
             $content .= '</div>';
         $content .= '</article>';
 
